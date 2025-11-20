@@ -58,7 +58,11 @@ public class Main {
             parser.analisar();
 
             System.out.println("\n Compilação concluída com sucesso!");
-            System.out.println("=======================================");
+
+            // 3️⃣ Código Intermediário
+            parser.getGerador().imprimir();
+
+            System.out.println("\n=======================================");
 
         } catch (IOException e) {
             System.err.println(" Erro ao ler o arquivo: " + e.getMessage());

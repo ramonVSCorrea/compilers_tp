@@ -1,0 +1,41 @@
+$ Teste de operações aritméticas
+$ Demonstra todos os operadores aritméticos
+
+Inteiro a <- 10;
+Inteiro b <- 3;
+
+$ Adição
+Inteiro soma <- a + b;
+Imprimir("10 + 3 = ");
+Imprimir(soma);
+
+$ Subtração
+Inteiro sub <- a - b;
+Imprimir("10 - 3 = ");
+Imprimir(sub);
+
+$ Multiplicação
+Inteiro mult <- a * b;
+Imprimir("10 * 3 = ");
+Imprimir(mult);
+
+$ Divisão
+Inteiro div <- a / b;
+Imprimir("10 / 3 = ");
+Imprimir(div);
+
+$ Módulo (resto)
+Inteiro mod <- a % b;
+Imprimir("10 % 3 = ");
+Imprimir(mod);
+
+$ Potenciação
+Inteiro pot <- b ** 2;
+Imprimir("3 ** 2 = ");
+Imprimir(pot);
+
+$ Expressão complexa
+Inteiro resultado <- (a + b) * 2 - b**2;
+Imprimir("(10 + 3) * 2 - 3**2 = ");
+Imprimir(resultado);
+

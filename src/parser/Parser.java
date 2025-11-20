@@ -5,6 +5,7 @@ import java.util.List;
 
 import TabelaDeSimbolos.TabelaDeSimbolos;
 import Tipo_de_dados.TipoDado;
+import codegen.GeradorCodigo;
 
 public class Parser {
     private final List<Token> tokens;
@@ -13,8 +14,18 @@ public class Parser {
     // Semântica
     private final TabelaDeSimbolos ts = new TabelaDeSimbolos();
 
+    // Geração de código intermediário
+    private final GeradorCodigo gerador = new GeradorCodigo();
+
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
+    }
+
+    /**
+     * Retorna o gerador de código para acesso externo
+     */
+    public GeradorCodigo getGerador() {
+        return gerador;
     }
 
     public void analisar() {
@@ -61,9 +72,20 @@ public class Parser {
         if (!ts.declarar(id.getValor(), tipoDecl)) {
             erro("Identificador já declarado neste escopo: " + id.getValor());
         }
+        // Gera código: declaração da variável
+        gerador.emitirDeclaracao(tipoDecl.toString(), id.getValor());
+
         consumir(Token.Tipo.ATRIBUICAO, "Esperado '<-' após identificador em declaração.");
+
+        // Primeiro verifica o tipo
+        int posSalva = pos;
         TipoDado t = expressao();
         verificarAtribuicao(tipoDecl, t, "Atribuição incompatível para '" + id.getValor() + "'");
+
+        // Volta e gera código
+        pos = posSalva;
+        String valorExpr = expressaoComCodigo();
+        gerador.emitirAtribuicao(id.getValor(), valorExpr);
     }
 
     // id <- expr ;
@@ -72,33 +94,84 @@ public class Parser {
         TipoDado tId = tipoDe(id.getValor());
         if (tId == null) erro("Variável não declarada: " + id.getValor());
         consumir(Token.Tipo.ATRIBUICAO, "Esperado '<-' após identificador.");
+
+        // Salva posição para gerar código
+        int posAntes = pos;
         TipoDado tExpr = expressao();
         verificarAtribuicao(tId, tExpr, "Atribuição incompatível para '" + id.getValor() + "'");
+
+        // Volta e gera código
+        pos = posAntes;
+        String valorExpr = expressaoComCodigo();
+        gerador.emitirAtribuicao(id.getValor(), valorExpr);
+
         consumir(Token.Tipo.PONTO_VIRGULA, "Esperado ';' ao final da atribuição.");
     }
 
     // Imprimir ( expr ) ;
     private void imprimirResto() {
         consumir(Token.Tipo.ABRE_PAREN, "Esperado '(' após 'Imprimir'.");
-        expressao(); // qualquer tipo é permitido para imprimir (STRING resultará de concatenação, se houver)
+
+        // Salva posição
+        int posAntes = pos;
+        expressao(); // verifica tipo
+
+        // Volta e gera código
+        pos = posAntes;
+        String valor = expressaoComCodigo();
+        gerador.emitirPrint(valor);
+
         consumir(Token.Tipo.FECHA_PAREN, "Esperado ')' após expressão em 'Imprimir'.");
         consumir(Token.Tipo.PONTO_VIRGULA, "Esperado ';' após 'Imprimir(...)'.");
     }
 
     // Enquanto <expr(logica)> { ... }
     private void enquantoResto() {
+        String labelInicio = gerador.novoLabel();
+        String labelFim = gerador.novoLabel();
+
+        gerador.emitirLabel(labelInicio);
+
+        // Salva posição
+        int posAntes = pos;
         TipoDado tCond = expressao();
         exigir(tCond == TipoDado.LOGICO, "Condição de 'Enquanto' deve ser lógica (booleana).");
+
+        // Volta e gera código da condição
+        pos = posAntes;
+        String condicao = expressaoComCodigo();
+        gerador.emitirIfFalseGoto(condicao, labelFim);
+
         bloco();
+
+        gerador.emitirGoto(labelInicio);
+        gerador.emitirLabel(labelFim);
     }
 
     // Se <expr(logica)> { ... } [Senão { ... }]
     private void seSenaoResto() {
+        String labelSenao = gerador.novoLabel();
+        String labelFim = gerador.novoLabel();
+
+        // Salva posição
+        int posAntes = pos;
         TipoDado tCond = expressao();
         exigir(tCond == TipoDado.LOGICO, "Condição de 'Se' deve ser lógica (booleana).");
+
+        // Volta e gera código da condição
+        pos = posAntes;
+        String condicao = expressaoComCodigo();
+        gerador.emitirIfFalseGoto(condicao, labelSenao);
+
         bloco();
+
         if (match(Token.Tipo.SENAO)) {
+            gerador.emitirGoto(labelFim);
+            gerador.emitirLabel(labelSenao);
             bloco();
+            gerador.emitirLabel(labelFim);
+        } else {
+            gerador.emitirLabel(labelSenao);
         }
     }
 
@@ -110,6 +183,7 @@ public class Parser {
         if (tId == null) {
             // variável de controle do laço: declare como Inteiro neste escopo
             ts.declarar(id.getValor(), TipoDado.INTEIRO);
+            gerador.emitirDeclaracao("INTEIRO", id.getValor());
             tId = TipoDado.INTEIRO;
         }
         exigir(tId == TipoDado.INTEIRO, "Variável de 'Para' deve ser Inteiro.");
@@ -120,13 +194,50 @@ public class Parser {
         }
 
         consumir(Token.Tipo.ABRE_PAREN, "Esperado '(' após 'em'.");
+
+        // Início
+        int posIni = pos;
         exigir(expressao() == TipoDado.INTEIRO, "Início do 'Para' deve ser Inteiro.");
+        pos = posIni;
+        String ini = expressaoComCodigo();
+        gerador.emitirAtribuicao(id.getValor(), ini);
+
         consumir(Token.Tipo.VIRGULA, "Esperado ',' após expressão de início.");
+
+        // Fim
+        int posFim = pos;
         exigir(expressao() == TipoDado.INTEIRO, "Fim do 'Para' deve ser Inteiro.");
+        pos = posFim;
+        String fim = expressaoComCodigo();
+        String tempFim = gerador.novoTemp();
+        gerador.emitirAtribuicao(tempFim, fim);
+
         consumir(Token.Tipo.VIRGULA, "Esperado ',' após expressão de fim.");
+
+        // Passo
+        int posPasso = pos;
         exigir(expressao() == TipoDado.INTEIRO, "Passo do 'Para' deve ser Inteiro.");
+        pos = posPasso;
+        String passo = expressaoComCodigo();
+        String tempPasso = gerador.novoTemp();
+        gerador.emitirAtribuicao(tempPasso, passo);
+
         consumir(Token.Tipo.FECHA_PAREN, "Esperado ')' após parâmetros do 'Para'.");
+
+        // Gera labels e loop
+        String labelInicio = gerador.novoLabel();
+        String labelFim = gerador.novoLabel();
+
+        gerador.emitirLabel(labelInicio);
+        String tempCond = gerador.emitirBinario(id.getValor(), "<=", tempFim);
+        gerador.emitirIfFalseGoto(tempCond, labelFim);
+
         bloco();
+
+        String tempInc = gerador.emitirBinario(id.getValor(), "+", tempPasso);
+        gerador.emitirAtribuicao(id.getValor(), tempInc);
+        gerador.emitirGoto(labelInicio);
+        gerador.emitirLabel(labelFim);
     }
 
     // --------- Blocos / escopos ----------
@@ -321,6 +432,103 @@ public class Parser {
 
     private Token atual()    { return tokens.get(pos); }
     private Token anterior() { return tokens.get(pos - 1); }
+
+    // --------- Geração de código para expressões ----------
+
+    /**
+     * Processa expressão e retorna o nome do temporário/variável que contém o resultado
+     */
+    private String expressaoComCodigo() { return exprOrComCodigo(); }
+
+    private String exprOrComCodigo() {
+        String esq = exprAndComCodigo();
+        while (matchOpLog("^")) {
+            String dir = exprAndComCodigo();
+            esq = gerador.emitirBinario(esq, "^", dir);
+        }
+        return esq;
+    }
+
+    private String exprAndComCodigo() {
+        String esq = exprRelComCodigo();
+        while (matchOpLog("&")) {
+            String dir = exprRelComCodigo();
+            esq = gerador.emitirBinario(esq, "&", dir);
+        }
+        return esq;
+    }
+
+    private String exprRelComCodigo() {
+        String esq = exprAddComCodigo();
+        while (check(Token.Tipo.OPERADOR_LOGICO)) {
+            String v = atual().getValor();
+            if (v.equals("=") || v.equals("<>") || v.equals(">") || v.equals("<") || v.equals(">=") || v.equals("<=")) {
+                avancar();
+                String dir = exprAddComCodigo();
+                esq = gerador.emitirBinario(esq, v, dir);
+            } else {
+                break;
+            }
+        }
+        return esq;
+    }
+
+    private String exprAddComCodigo() {
+        String esq = exprMulComCodigo();
+        while (matchOpArit("+", "-")) {
+            String op = anterior().getValor();
+            String dir = exprMulComCodigo();
+            esq = gerador.emitirBinario(esq, op, dir);
+        }
+        return esq;
+    }
+
+    private String exprMulComCodigo() {
+        String esq = exprPowComCodigo();
+        while (matchOpArit("*", "/", "%")) {
+            String op = anterior().getValor();
+            String dir = exprPowComCodigo();
+            esq = gerador.emitirBinario(esq, op, dir);
+        }
+        return esq;
+    }
+
+    private String exprPowComCodigo() {
+        String esq = exprUnComCodigo();
+        if (matchOpArit("**")) {
+            String dir = exprPowComCodigo();
+            esq = gerador.emitirBinario(esq, "**", dir);
+        }
+        return esq;
+    }
+
+    private String exprUnComCodigo() {
+        if (matchOpArit("-")) {
+            String operando = exprUnComCodigo();
+            return gerador.emitirUnario("-", operando);
+        }
+        return primarioComCodigo();
+    }
+
+    private String primarioComCodigo() {
+        if (match(Token.Tipo.NUMERO))  return anterior().getValor();
+        if (match(Token.Tipo.STRING))  return anterior().getValor();
+        if (match(Token.Tipo.VERDADE)) return "true";
+        if (match(Token.Tipo.MENTIRA)) return "false";
+
+        if (match(Token.Tipo.IDENTIFICADOR)) {
+            return anterior().getValor();
+        }
+
+        if (match(Token.Tipo.ABRE_PAREN)) {
+            String temp = expressaoComCodigo();
+            consumir(Token.Tipo.FECHA_PAREN, "Esperado ')' após expressão.");
+            return temp;
+        }
+
+        erro("Expressão inválida perto de: " + atual().getValor());
+        return "";
+    }
 
     private void erro(String msg) {
         throw new RuntimeException("Erro sintático: " + msg);

@@ -1,0 +1,22 @@
+$ Teste de expressões lógicas
+$ Demonstra operadores lógicos E (&) e OU (^)
+
+Logico a <- Verdade;
+Logico b <- Mentira;
+Logico c <- Verdade;
+
+$ Teste E lógico
+Logico resE <- a & c;
+Imprimir("Verdade & Verdade = ");
+Imprimir(resE);
+
+$ Teste OU lógico
+Logico resOU <- a ^ b;
+Imprimir("Verdade ^ Mentira = ");
+Imprimir(resOU);
+
+$ Teste combinado
+Logico resComb <- (a & b) ^ c;
+Imprimir("(Verdade & Mentira) ^ Verdade = ");
+Imprimir(resComb);
+

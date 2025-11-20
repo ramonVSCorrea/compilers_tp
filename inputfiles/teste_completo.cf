@@ -1,0 +1,116 @@
+$$
+   Teste Completo do Compilador Compila Fofo
+   Demonstra todas as funcionalidades implementadas
+$$
+
+$ ========================================
+$ 1. DECLARAÇÕES E TIPOS
+$ ========================================
+
+Inteiro num <- 42;
+Logico verd <- Verdade;
+Logico fals <- Mentira;
+Caractere msg <- "Teste Completo";
+
+Imprimir("=== TESTE COMPLETO DO COMPILADOR ===");
+
+$ ========================================
+$ 2. OPERAÇÕES ARITMÉTICAS
+$ ========================================
+
+Inteiro a <- 10;
+Inteiro b <- 3;
+Inteiro soma <- a + b;
+Inteiro sub <- a - b;
+Inteiro mult <- a * b;
+Inteiro div <- a / b;
+Inteiro resto <- a % b;
+Inteiro potencia <- b ** 2;
+
+Imprimir("Operacoes Aritmeticas:");
+Imprimir(soma);
+Imprimir(mult);
+
+$ ========================================
+$ 3. EXPRESSÕES COMPLEXAS
+$ ========================================
+
+Inteiro resultado <- (a + b) * 2 - potencia;
+Imprimir("Resultado de expressao complexa:");
+Imprimir(resultado);
+
+$ ========================================
+$ 4. ESTRUTURA CONDICIONAL SE/SENAO
+$ ========================================
+
+Se (a > b) {
+    Imprimir("a eh maior que b");
+    Se (a > 5) {
+        Imprimir("a tambem eh maior que 5");
+    }
+} Senao {
+    Imprimir("a nao eh maior que b");
+}
+
+$ ========================================
+$ 5. OPERADORES RELACIONAIS
+$ ========================================
+
+Logico teste1 <- a = b;
+Logico teste2 <- a <> b;
+Logico teste3 <- a >= b;
+
+$ ========================================
+$ 6. OPERADORES LÓGICOS
+$ ========================================
+
+Logico eLogico <- verd & fals;
+Logico ouLogico <- verd ^ fals;
+Logico complexo <- (a > b) & (b > 0);
+
+$ ========================================
+$ 7. LAÇO ENQUANTO
+$ ========================================
+
+Inteiro contador <- 0;
+Enquanto (contador < 5) {
+    Imprimir("Contador:");
+    Imprimir(contador);
+    contador <- contador + 1;
+}
+
+$ ========================================
+$ 8. LAÇO PARA
+$ ========================================
+
+Inteiro total <- 0;
+Para i em (1, 5, 1) {
+    total <- total + i;
+}
+
+Imprimir("Soma de 1 a 5:");
+Imprimir(total);
+
+$ ========================================
+$ 9. BLOCOS ANINHADOS
+$ ========================================
+
+Inteiro x <- 10;
+Se (x > 5) {
+    Inteiro y <- 20;
+    Enquanto (y > 15) {
+        y <- y - 1;
+    }
+    Imprimir(y);
+}
+
+$ ========================================
+$ 10. EXPRESSÕES COM PARÊNTESES
+$ ========================================
+
+Inteiro calc <- ((5 + 3) * 2) - (4 / 2);
+Imprimir("Calculo com parenteses:");
+Imprimir(calc);
+
+Imprimir("=== FIM DO TESTE COMPLETO ===");
+

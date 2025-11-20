@@ -1,0 +1,25 @@
+$ Exemplo de código CF - Compila Fofo
+
+$ Declaração de variáveis
+Inteiro i <- 1;
+Inteiro j <- 5;
+Inteiro k <- i**2 + j;
+
+$ Saída
+Imprimir("O valor de k é ");
+Imprimir(k);
+
+$ Estrutura condicional
+Se (k > 5) {
+    Imprimir("k é maior que 5");
+} Senao {
+    Imprimir("k é menor ou igual a 5");
+}
+
+$ Laço
+Enquanto (i < 10) {
+    i <- i + 1;
+}
+
+Imprimir("Fim do programa");
+

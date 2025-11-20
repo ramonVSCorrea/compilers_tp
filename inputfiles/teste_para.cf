@@ -1,0 +1,12 @@
+$ Teste de laço Para
+$ Calcula soma dos números de 1 a 10
+
+Inteiro soma <- 0;
+
+Para i em (1, 10, 1) {
+    soma <- soma + i;
+}
+
+Imprimir("Soma de 1 a 10 = ");
+Imprimir(soma);
+
