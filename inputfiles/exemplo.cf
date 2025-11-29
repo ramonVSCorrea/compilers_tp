@@ -1,3 +1,17 @@
- Inteiro i <- 1, j <- 5
- Inteiro k <- i**2 + j
- Imprimir("O valor de k é " + k)
+$ TESTE 6 - Logico, AND (&) e OR (^)
+
+Logico a <- Verdade;
+Logico b <- Mentira;
+Logico c <- Mentira;
+
+Logico r <- a & b;
+Logico s <- a ^ b;
+Logico t <- a ^ b ^ c;
+
+Imprimir("TESTE 6:");
+Imprimir("a = " + a  );
+Imprimir("b = " + b  );
+Imprimir("c = " + c );
+Imprimir("a & b = " + r  );
+Imprimir("a ^ b = " + s );
+Imprimir("a ^ b ^ c = " + t  );

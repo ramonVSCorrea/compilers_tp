@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.regex.*;
 
 public class Lexer {
+
     private String codigo;
     private final List<Token> tokens = new ArrayList<>();
 
@@ -12,87 +13,90 @@ public class Lexer {
     }
 
     public List<Token> analisar() {
-        // Comentários
-        codigo = codigo.replaceAll("(?s)\\$\\$.*?\\$\\$", "");   // $$ ... $$ (multilinha)
-        codigo = codigo.replaceAll("(?m)\\$[^\\n]*", "");        // $ ... (linha)
 
-        // IMPORTANTE:
-        // - (?iu): case-insensitive + unicode
-        // - tokens de 2 chars antes dos de 1 char
-        // - Senão/Senao ANTES de Se
+        // Remoção de comentários
+        codigo = codigo.replaceAll("(?s)\\$\\$.*?\\$\\$", "");  // $$ ... $$
+        codigo = codigo.replaceAll("(?m)\\$.*$", "");           // $ ...
+
+        // Ordem de prioridade é crucial!
         String regex =
             "(?iu)" +
-            "(" + "Inteiro|Logico|Lógico|Caractere|Enquanto|Sen[ãa]o|Senao|Para|Imprimir|Verdade|Mentira|Se" + ")" + // keywords (longos antes!)
-            "|" + "(\\*\\*|>=|<=|<>|<-)" +        // operadores 2 chars
-            "|" + "(\\d+)" +                      // números
-            "|" + "(\\p{L}+)" +                   // identificadores (todas as letras unicode)
-            "|" + "([+\\-/%*])" +                 // aritméticos 1 char
-            "|" + "(=|>|<|&|\\^)" +               // lógicos 1 char
-            "|" + "([{};(),])" +                  // símbolos
-            "|" + "(\"[^\"]*\")";                 // strings
+            "(" + "Inteiro|Logico|Lógico|Caractere|Enquanto|Sen[ãa]o|Para|Imprimir|Verdade|Mentira|Se" + ")" + // palavras-chave
+            "|" + "(\\*\\*|>=|<=|<>|<-)" +     // operadores 2 caracteres
+            "|" + "(\\d+)" +                   // números
+            "|" + "(\\p{L}+)" +                // identificadores
+            "|" + "([+\\-/%*])" +              // operadores aritméticos
+            "|" + "(=|>|<|&|\\^)" +            // operadores lógicos
+            "|" + "([{};,()])" +               // <<< parênteses incluídos aqui
+            "|" + "(\"[^\"]*\")";              // strings
 
-        Matcher matcher = Pattern.compile(regex).matcher(codigo);
-        while (matcher.find()) {
-            String lexema = matcher.group();
-            tokens.add(classificar(lexema));
+        Matcher m = Pattern.compile(regex).matcher(codigo);
+
+        while (m.find()) {
+            tokens.add(classificar(m.group()));
         }
 
         tokens.add(new Token(Token.Tipo.FIM, ""));
         return tokens;
     }
 
-    private Token classificar(String valor) {
+    private Token classificar(String v) {
+
         // Strings
-        if (valor.startsWith("\"") && valor.endsWith("\"")) {
-            return new Token(Token.Tipo.STRING, valor);
-        }
+        if (v.startsWith("\"") && v.endsWith("\""))
+            return new Token(Token.Tipo.STRING, v);
 
         // Números
-        if (valor.matches("\\d+")) return new Token(Token.Tipo.NUMERO, valor);
+        if (v.matches("\\d+"))
+            return new Token(Token.Tipo.NUMERO, v);
 
-        // Símbolos
-        switch (valor) {
-            case "{": return new Token(Token.Tipo.ABRE_CHAVE, valor);
-            case "}": return new Token(Token.Tipo.FECHA_CHAVE, valor);
-            case ";": return new Token(Token.Tipo.PONTO_VIRGULA, valor);
-            case "(": return new Token(Token.Tipo.ABRE_PAREN, valor);
-            case ")": return new Token(Token.Tipo.FECHA_PAREN, valor);
-            case ",": return new Token(Token.Tipo.VIRGULA, valor);
+        // Símbolos e parênteses
+        switch (v) {
+            case "{": return new Token(Token.Tipo.ABRE_CHAVE, v);
+            case "}": return new Token(Token.Tipo.FECHA_CHAVE, v);
+            case "(": return new Token(Token.Tipo.ABRE_PAREN, v);
+            case ")": return new Token(Token.Tipo.FECHA_PAREN, v);
+            case ";": return new Token(Token.Tipo.PONTO_VIRGULA, v);
+            case ",": return new Token(Token.Tipo.VIRGULA, v);
         }
 
-        // Operadores compostos / atribuição
-        if (valor.equals("<-")) return new Token(Token.Tipo.ATRIBUICAO, valor);
-        if (valor.equals("**")) return new Token(Token.Tipo.OPERADOR_ARIT, valor);
-        if (valor.equals(">=") || valor.equals("<=") || valor.equals("<>"))
-            return new Token(Token.Tipo.OPERADOR_LOGICO, valor);
+        // Operadores especiais
+        switch (v) {
+            case "<-": return new Token(Token.Tipo.ATRIBUICAO, v);
+            case "**": return new Token(Token.Tipo.OPERADOR_ARIT, v);
+            case ">=": case "<=": case "<>":
+                return new Token(Token.Tipo.OPERADOR_LOGICO, v);
+        }
 
-        // Operadores 1 char
-        if (valor.matches("[+\\-/%*]"))  return new Token(Token.Tipo.OPERADOR_ARIT, valor);
-        if (valor.matches("=|>|<|&|\\^")) return new Token(Token.Tipo.OPERADOR_LOGICO, valor);
+        // Operadores simples
+        if (v.matches("[+\\-/%*]"))
+            return new Token(Token.Tipo.OPERADOR_ARIT, v);
 
-        // Palavras-chave (case-insensitive + acentos)
-        String low = valor.toLowerCase(Locale.ROOT);
+        if (v.matches("=|>|<|&|\\^"))
+            return new Token(Token.Tipo.OPERADOR_LOGICO, v);
+
+        // Palavras-chave (case insensitive)
+        String low = v.toLowerCase(Locale.ROOT);
+
         switch (low) {
-            case "inteiro":   return new Token(Token.Tipo.INTEIRO, valor);
+            case "inteiro": return new Token(Token.Tipo.INTEIRO, v);
             case "logico":
-            case "lógico":    return new Token(Token.Tipo.LOGICO, valor);
-            case "caractere": return new Token(Token.Tipo.CARACTERE, valor);
-            case "enquanto":  return new Token(Token.Tipo.ENQUANTO, valor);
+            case "lógico": return new Token(Token.Tipo.LOGICO, v);
+            case "caractere": return new Token(Token.Tipo.CARACTERE, v);
+            case "enquanto": return new Token(Token.Tipo.ENQUANTO, v);
             case "senão":
-            case "senao":     return new Token(Token.Tipo.SENAO, valor);
-            case "para":      return new Token(Token.Tipo.PARA, valor);
-            case "imprimir":  return new Token(Token.Tipo.IMPRIMIR, valor);
-            case "verdade":   return new Token(Token.Tipo.VERDADE, valor);
-            case "mentira":   return new Token(Token.Tipo.MENTIRA, valor);
-            case "se":        return new Token(Token.Tipo.SE, valor);
+            case "senao": return new Token(Token.Tipo.SENAO, v);
+            case "para": return new Token(Token.Tipo.PARA, v);
+            case "imprimir": return new Token(Token.Tipo.IMPRIMIR, v);
+            case "verdade": return new Token(Token.Tipo.VERDADE, v);
+            case "mentira": return new Token(Token.Tipo.MENTIRA, v);
+            case "se": return new Token(Token.Tipo.SE, v);
         }
 
-        // Identificador (normaliza para minúsculas p/ case-insensitive)
-        if (valor.matches("\\p{L}+")) {
-            String id = valor.toLowerCase(Locale.ROOT);
-            return new Token(Token.Tipo.IDENTIFICADOR, id);
-        }
+        // Identificador
+        if (v.matches("\\p{L}+"))
+            return new Token(Token.Tipo.IDENTIFICADOR, v.toLowerCase());
 
-        throw new RuntimeException("Token inválido: " + valor);
+        throw new RuntimeException("Token inválido: " + v);
     }
 }
