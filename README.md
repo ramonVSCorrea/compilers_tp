@@ -462,7 +462,7 @@ spim -file outputfiles/saida.asm
 
 - **MIPS Assembly Language Programming** - Robert Britton
 - **Compilers: Principles, Techniques, and Tools** - Aho, Lam, Sethi, Ullman (Dragon Book)
-- **MARS MIPS Simulator:** http://courses.missouristate.edu/KenVollmar/mars/
+- **MARS MIPS Simulator:** [http://courses.missouristate.edu/KenVollmar/mars/](https://github.com/dpetersanderson/MARS/releases/tag/v.4.5.1)
 
 ## 👥 Autor
 
