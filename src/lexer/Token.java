@@ -1,22 +1,30 @@
 package lexer;
 
 public class Token {
+
     public enum Tipo {
-        // Palavras-chave / tipos
+        // Palavras-chave
         INTEIRO, LOGICO, CARACTERE,
         ENQUANTO, SE, SENAO, PARA, IMPRIMIR,
+        VERDADE, MENTIRA,
 
-        // Literais e identificadores
-        NUMERO, IDENTIFICADOR, STRING, VERDADE, MENTIRA,
+        // Literais
+        NUMERO, STRING,
+
+        // Identificadores
+        IDENTIFICADOR,
 
         // Operadores
-        OPERADOR_ARIT, OPERADOR_LOGICO, ATRIBUICAO,
+        OPERADOR_ARIT,
+        OPERADOR_LOGICO,
+        ATRIBUICAO,   // <-
 
         // Símbolos
-        ABRE_CHAVE, FECHA_CHAVE, PONTO_VIRGULA,
-        ABRE_PAREN, FECHA_PAREN, VIRGULA,
+        ABRE_CHAVE, FECHA_CHAVE,
+        ABRE_PAREN, FECHA_PAREN,
+        VIRGULA, PONTO_VIRGULA,
 
-        // Fim de arquivo/entrada
+        // Final
         FIM
     }
 
@@ -24,7 +32,7 @@ public class Token {
     private final String valor;
 
     public Token(Tipo tipo, String valor) {
-        this.tipo = tipo;
+        this.tipo  = tipo;
         this.valor = valor;
     }
 
@@ -38,6 +46,6 @@ public class Token {
 
     @Override
     public String toString() {
-        return "|" + tipo + " = " + valor + "|";
+        return tipo + " = " + valor;
     }
 }

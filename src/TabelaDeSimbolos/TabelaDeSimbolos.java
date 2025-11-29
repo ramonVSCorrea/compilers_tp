@@ -1,36 +1,32 @@
-
 package TabelaDeSimbolos;
 
+import Tipo_de_dados.TipoDado;
 import java.util.*;
 
-import Tipo_de_dados.TipoDado;
-
 public class TabelaDeSimbolos {
-    private final Deque<Map<String, TipoDado>> pilha = new ArrayDeque<>();
 
-    public TabelaDeSimbolos() {
-        abrirEscopo(); // escopo global
-    }
+    private final List<Map<String, TipoDado>> escopos = new ArrayList<>();
 
-    public void abrirEscopo() {
-        pilha.push(new HashMap<>());
-    }
+    public TabelaDeSimbolos() { abrirEscopo(); }
+
+    public void abrirEscopo() { escopos.add(new HashMap<>()); }
 
     public void fecharEscopo() {
-        pilha.pop();
+        if (escopos.size() > 1)
+            escopos.remove(escopos.size() - 1);
     }
 
-    public boolean declarar(String nome, TipoDado tipo) {
-        Map<String, TipoDado> topo = pilha.peek();
-        if (topo.containsKey(nome)) return false; // já declarado neste escopo
-        topo.put(nome, tipo);
+    public boolean declarar(String id, TipoDado tipo) {
+        Map<String, TipoDado> atual = escopos.get(escopos.size() - 1);
+        if (atual.containsKey(id)) return false;
+        atual.put(id, tipo);
         return true;
     }
 
-    public TipoDado buscar(String nome) {
-        for (Map<String, TipoDado> escopo : pilha) {
-            if (escopo.containsKey(nome)) return escopo.get(nome);
-        }
+    public TipoDado buscar(String id) {
+        for (int i = escopos.size() - 1; i >= 0; i--)
+            if (escopos.get(i).containsKey(id))
+                return escopos.get(i).get(id);
         return null;
     }
 }
