@@ -1,0 +1,398 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{listings}
+\usepackage{courier}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\lstdefinelanguage{CF}{
+  morekeywords={Inteiro,Logico,Lógico,Caractere,Se,Senao,Senão,Enquanto,Para,Imprimir,Verdade,Mentira,em},
+  sensitive=false,
+  morecomment=[l]$,
+  morestring=[b]",
+}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\bfseries,
+  commentstyle=\itshape,
+  stringstyle=\ttfamily,
+  showstringspaces=false,
+  columns=fullflexible,
+  frame=single,
+  breaklines=true,
+}
+
+\title{Documentação Técnica -- Compilador Compila Fofo (CF)}
+\author{Trabalho Prático de Compiladores}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introdução}
+
+Este documento apresenta a documentação técnica completa do \textbf{Compila Fofo (CF)}, um compilador desenvolvido como trabalho prático da disciplina de Compiladores. O projeto implementa, de forma integrada, todas as principais etapas do processo de compilação de uma linguagem imperativa simples:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Análise Léxica} -- definição do conjunto de tokens da linguagem, construção dos autômatos finitos determinísticos (AFDs) e implementação do analisador léxico responsável por transformar o código-fonte em uma sequência de tokens válidos.
+  \item \textbf{Análise Sintática} -- definição e implementação da gramática da linguagem em um parser descendente recursivo (LL(1)), respeitando precedência e associatividade de operadores, e verificando se a sequência de tokens forma programas corretamente estruturados.
+  \item \textbf{Análise Semântica} -- verificação de tipos, uso correto de variáveis e regras semânticas da linguagem, por meio de uma tabela de símbolos com suporte a escopos aninhados, garantindo que programas sintaticamente corretos também façam sentido do ponto de vista semântico.
+  \item \textbf{Geração de Código} -- tradução do programa CF em código Assembly \textbf{MIPS 32 bits}, incluindo declaração de variáveis na seção \texttt{.data}, geração de instruções na seção \texttt{.text}, implementação de estruturas de controle (\texttt{Se}, \texttt{Enquanto}, \texttt{Para}) e suporte a operações aritméticas, lógicas e relacionais.
+  \item \textbf{Execução e Otimizações} -- execução do código gerado em simuladores como MARS e SPIM, e aplicação de otimizações simples, como \emph{constant folding} e concatenação inteligente de strings, além da proposta de otimizações futuras.
+\end{enumerate}
+
+A linguagem CF foi projetada com fins didáticos, buscando ao mesmo tempo ser expressiva o bastante para demonstrar conceitos fundamentais de compiladores e simples o suficiente para permitir uma implementação completa dentro do escopo da disciplina. Ela oferece tipos básicos (\texttt{Inteiro}, \texttt{Logico}/\texttt{Lógico}, \texttt{Caractere} e um tipo interno \texttt{STRING}), estruturas de controle usuais e um comando de saída (\texttt{Imprimir}) com suporte a concatenação de diferentes tipos.
+
+Ao longo deste documento, cada etapa do compilador é descrita em detalhes:
+
+\begin{itemize}
+  \item Na Seção~\ref{sec:lexico}, são apresentados a definição informal da linguagem, a gramática em alto nível e a construção dos autômatos que fundamentam o analisador léxico.
+  \item A Seção~\ref{sec:sintatico} descreve o analisador sintático, a técnica utilizada, a implementação da precedência de operadores e o tratamento de erros sintáticos.
+  \item A Seção~\ref{sec:semantico} discute a análise semântica, a modelagem da tabela de símbolos, as regras de tipagem e os principais erros semânticos tratados.
+  \item A Seção~\ref{sec:codegen} explica a geração de código Assembly MIPS e mostra como o programa CF é traduzido e executado em um ambiente assembler online.
+  \item A Seção~\ref{sec:otimizacoes} documenta as otimizações já implementadas e sugere aprimoramentos futuros.
+  \item Por fim, a Seção~\ref{sec:avaliacao} relaciona explicitamente cada parte do documento com os critérios de avaliação definidos no enunciado do trabalho.
+\end{itemize}
+
+Com isso, este texto serve tanto como guia de uso do compilador quanto como registro técnico das decisões de projeto, garantindo transparência na implementação das etapas léxica, sintática, semântica e de geração de código, além de demonstrar o alinhamento do projeto com os objetivos pedagógicos da disciplina.
+
+\section{Documentação e Léxico}
+\label{sec:lexico}
+
+\subsection{Definição da Linguagem CF}
+
+A linguagem \textbf{Compila Fofo (CF)} é uma linguagem imperativa simples, projetada para fins didáticos na disciplina de Compiladores. Um programa CF é composto por:
+
+\begin{itemize}
+  \item declarações de variáveis;
+  \item comandos de atribuição;
+  \item estruturas de controle (\texttt{Se}, \texttt{Senao}, \texttt{Enquanto}, \texttt{Para});
+  \item comando de saída (\texttt{Imprimir});
+  \item expressões aritméticas, relacionais e lógicas.
+\end{itemize}
+
+Não há funções definidas pelo usuário; o programa é um bloco único (``escopo global''), possivelmente com escopos internos delimitados por chaves \texttt{{} } (por exemplo, dentro de \texttt{Se}, \texttt{Enquanto}, \texttt{Para}).
+
+\subsubsection*{Tipos de Dados}
+
+A linguagem oferece os seguintes tipos:
+
+\begin{itemize}
+  \item \texttt{Inteiro}: domínio dos números inteiros (por exemplo, 0, 1, -5). Suporta operações aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}, \texttt{**}) e relacionais.
+  \item \texttt{Logico}/\texttt{Lógico}: domínio dos valores booleanos \texttt{Verdade} (1) e \texttt{Mentira} (0). Participam de operações lógicas (\texttt{} e \texttt{^}) e de comparações.
+  \item \texttt{Caractere}: utilizado para armazenar texto (strings literais entre aspas), principalmente para saída.
+  \item \texttt{STRING}: tipo interno do compilador, não exposto diretamente na sintaxe da linguagem, usado para representar literais de string e resultados de concatenação com \texttt{+}.
+\end{itemize}
+
+\subsubsection*{Palavras-chave}
+
+As principais palavras-chave (insensíveis a maiúsculas/minúsculas) são:
+
+\begin{itemize}
+  \item Tipos: \texttt{Inteiro}, \texttt{Logico}/\texttt{Lógico}, \texttt{Caractere};
+  \item Controle de fluxo: \texttt{Se}, \texttt{Senao}/\texttt{Senão}, \texttt{Enquanto}, \texttt{Para}, \texttt{em};
+  \item Entrada/Saída: \texttt{Imprimir};
+  \item Literais lógicos: \texttt{Verdade}, \texttt{Mentira}.
+\end{itemize}
+
+Identificadores de variáveis são distintos de palavras-chave, mas a verificação de palavras-chave é feita de forma case-insensitive.
+
+\subsubsection*{Operadores e Precedência}
+
+A linguagem suporta os seguintes operadores, com a precedência indicada do mais forte para o mais fraco:
+
+\begin{enumerate}
+  \item Potenciação: \texttt{**} (associatividade \emph{à direita});
+  \item Unário: \texttt{-} (negação numérica unária);
+  \item Multiplicativos: \texttt{*}, \texttt{/}, \texttt{\%};
+  \item Aditivos: \texttt{+}, \texttt{-} (incluindo concatenação de strings com \texttt{+});
+  \item Relacionais: \texttt{=}, \texttt{<>}, \texttt{<}, \texttt{>}, \texttt{<=}, \texttt{>=};
+  \item Lógico E: \texttt{};
+  \item Lógico OU: \texttt{^}.
+\end{enumerate}
+
+\subsubsection*{Comentários}
+
+Dois tipos de comentários são suportados:
+
+\begin{itemize}
+  \item Comentário de linha: \lstinline!$ comentário até o fim da linha!;
+  \item Comentário multilinha: \lstinline!$$ comentário em várias linhas $$!.
+\end{itemize}
+
+O analisador léxico remove comentários antes de tokenizar o código-fonte.
+
+\subsubsection*{Estruturas Suportadas}
+
+Exemplos de estruturas da linguagem CF:
+
+\paragraph{Declaração de variáveis}
+
+\begin{lstlisting}[language=CF]
+Inteiro x;
+Inteiro i <- 10;
+Inteiro a <- 1, b <- 2, c;
+Logico flag <- Verdade;
+Caractere texto <- "Olá";
+\end{lstlisting}
+
+\paragraph{Atribuição}
+
+\begin{lstlisting}[language=CF]
+x <- 5;
+y <- x + 10;
+flag <- x > 5;
+\end{lstlisting}
+
+\paragraph{Estrutura condicional}
+
+\begin{lstlisting}[language=CF]
+Se (x > 0) {
+    Imprimir("Positivo");
+} Senao {
+    Imprimir("Não positivo");
+}
+
+Se x = 5 {
+    Imprimir("x é cinco");
+}
+\end{lstlisting}
+
+\paragraph{Laço Enquanto}
+
+\begin{lstlisting}[language=CF]
+Enquanto (i < 10) {
+    i <- i + 1;
+    Imprimir("i = " + i);
+}
+\end{lstlisting}
+
+\paragraph{Laço Para}
+
+\begin{lstlisting}[language=CF]
+Para i em (1, 10, 1) {
+    Imprimir("Valor: " + i);
+}
+
+Para j em (10, 1, -1) {
+    Imprimir("Decrescente: " + j);
+}
+\end{lstlisting}
+
+\paragraph{Impressão com concatenação}
+
+\begin{lstlisting}[language=CF]
+Inteiro idade <- 25;
+Imprimir("Idade: " + idade);
+Imprimir("Resultado: " + (5 + 3));
+Logico teste <- Verdade;
+Imprimir("Teste: " + teste);
+\end{lstlisting}
+
+\subsection{Gramática em Alto Nível}
+
+A gramática efetiva da linguagem é implementada no parser descendente recursivo, mas pode ser descrita em notação EBNF simplificada.
+
+\subsubsection*{Estrutura geral do programa}
+
+\begin{align*}
+\langle programa \rangle &::= \{ \langle declaracaoOuComando \rangle \} \, EOF \\
+\langle declaracaoOuComando \rangle &::= \langle declaracao \rangle \mid \langle comando \rangle \\
+\langle declaracao \rangle &::= \langle tipo \rangle \, \langle listaDeclaracoes \rangle \, ; \\
+\langle tipo \rangle &::= \text{"Inteiro"} \mid \text{"Logico"} \mid \text{"Lógico"} \mid \text{"Caractere"} \\
+\langle listaDeclaracoes \rangle &::= \langle declaracaoVar \rangle \, \{ , \, \langle declaracaoVar \rangle \} \\
+\langle declaracaoVar \rangle &::= IDENTIFICADOR \, [ <- \, \langle expressao \rangle ]
+\end{align*}
+
+\subsubsection*{Comandos}
+
+\begin{align*}
+\langle comando \rangle &::= \langle comandoAtribuicao \rangle \mid \langle comandoSe \rangle \mid \langle comandoEnquanto \rangle \\
+&\mid \langle comandoPara \rangle \mid \langle comandoImprimir \rangle \mid \langle bloco \rangle \\
+\langle comandoAtribuicao \rangle &::= IDENTIFICADOR \ <- \ \langle expressao \rangle \, ; \\
+\langle comandoSe \rangle &::= \text{"Se"} \, [ ( ] \, \langle expressao \rangle \, [ ) ] \, \langle bloco \rangle \, [ \text{"Senao"} \, \langle bloco \rangle ] \\
+\langle comandoEnquanto \rangle &::= \text{"Enquanto"} \, [ ( ] \, \langle expressao \rangle \, [ ) ] \, \langle bloco \rangle \\
+\langle comandoPara \rangle &::= \text{"Para"} \, IDENTIFICADOR \, \text{"em"} \, ( \, \langle expressao \rangle , \, \langle expressao \rangle , \, \langle expressao \rangle ) \, \langle bloco \rangle \\
+\langle comandoImprimir \rangle &::= \text{"Imprimir"} \, ( \, \langle expressao \rangle ) \, ; \\
+\langle bloco \rangle &::= \{ \, \{ \langle declaracaoOuComando \rangle \} \, \}
+\end{align*}
+
+\subsubsection*{Expressões}
+
+\begin{align*}
+\langle expressao \rangle &::= \langle exprOu \rangle \\
+\langle exprOu \rangle &::= \langle exprE \rangle \, \{ \; ^ \, \langle exprE \rangle \; \} \\
+\langle exprE \rangle &::= \langle exprRel \rangle \, \{ \; \& \, \langle exprRel \rangle \; \} \\
+\langle exprRel \rangle &::= \langle exprAdd \rangle \, [ ( = \mid <> \mid < \mid > \mid <= \mid >= ) \, \langle exprAdd \rangle ] \\
+\langle exprAdd \rangle &::= \langle exprMul \rangle \, \{ ( + \mid - ) \, \langle exprMul \rangle \} \\
+\langle exprMul \rangle &::= \langle exprPow \rangle \, \{ ( * \mid / \mid \% ) \, \langle exprPow \rangle \} \\
+\langle exprPow \rangle &::= \langle exprUn \rangle \, \{ ** \, \langle exprUn \rangle \} \\
+\langle exprUn \rangle &::= - \, \langle exprUn \rangle \mid \langle primario \rangle \\
+\langle primario \rangle &::= IDENTIFICADOR \mid NUM\_INTEIRO \mid STRING\_LITERAL \mid \text{"Verdade"} \mid \text{"Mentira"} \mid ( \, \langle expressao \rangle \, )
+\end{align*}
+
+\subsection{Construção dos Autômatos e Analisador Léxico}
+
+A análise léxica é fundamentada em autômatos finitos determinísticos (AFDs) para cada classe de token. A seguir descrevemos alguns dos principais AFDs de forma formal.
+
+\subsubsection*{AFD para identificadores/palavras-chave}
+
+\begin{itemize}
+  \item Conjunto de estados: $Q = \{ q_0, q_1 \}$;
+  \item Alfabeto: letras (A--Z, a--z), dígitos (0--9) e sublinhado \texttt{\_};
+  \item Estado inicial: $q_0$;
+  \item Estados de aceitação: $\{ q_1 \}$;
+  \item Função de transição $\delta$:
+  \begin{itemize}
+    \item $\delta(q_0,\text{letra ou \_}) = q_1$;
+    \item $\delta(q_0,\text{outro}) = \text{erro}$;
+    \item $\delta(q_1,\text{letra/dígito/\_}) = q_1$;
+    \item $\delta(q_1,\text{outro}) = \text{parada}$ (token é formado).
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{AFD para números inteiros}
+
+\begin{itemize}
+  \item Conjunto de estados: $Q = \{ q_0, q_1 \}$;
+  \item Alfabeto: dígitos (0--9);
+  \item Estado inicial: $q_0$;
+  \item Estados de aceitação: $\{ q_1 \}$;
+  \item Função de transição $\delta$:
+  \begin{itemize}
+    \item $\delta(q_0,\text{dígito}) = q_1$;
+    \item $\delta(q_0,\text{outro}) = \text{erro}$;
+    \item $\delta(q_1,\text{dígito}) = q_1$;
+    \item $\delta(q_1,\text{outro}) = \text{parada}$ (token NUM\_INTEIRO).
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{AFD para strings literais}
+
+\begin{itemize}
+  \item Conjunto de estados: $Q = \{ q_0, q_1, q_2 \}$;
+  \item Alfabeto: aspas duplas e caracteres de texto permitidos;
+  \item Estado inicial: $q_0$;
+  \item Estados de aceitação: $\{ q_2 \}$;
+  \item Função de transição $\delta$:
+  \begin{itemize}
+    \item $\delta(q_0,\text{"}) = q_1$;
+    \item $\delta(q_0,\text{outro}) = \text{erro}$;
+    \item $\delta(q_1,\text{"}) = q_2$;
+    \item $\delta(q_1,\text{caractere de texto}) = q_1$;
+    \item $\delta(q_2,\text{qualquer}) = \text{parada}$ (token STRING\_LITERAL).
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{AFD para operadores compostos}
+
+Para operadores como \texttt{<-}, \texttt{**}, \texttt{>=}, \texttt{<=} e \texttt{<>}, utiliza-se um AFD que primeiro lê o primeiro caractere (\texttt{<}, \texttt{>}, \texttt{*}) e, dependendo do próximo caractere, decide entre um operador de dois caracteres ou um operador simples.
+
+\subsubsection*{AFD para comentários}
+
+\begin{itemize}
+  \item Comentário de linha: estados $q_0$ (inicial) e $q_1$; ao ler \texttt{$} em $q_0$ vai para $q_1$ e consome caracteres até \texttt{\textbackslash n} ou EOF, sem gerar tokens.
+  \item Comentário multilinha: sequência \texttt{$$} inicia um estado interno onde todo o texto é ignorado até encontrar novamente \texttt{$$} de fechamento.
+\end{itemize}
+
+A implementação concreta em \texttt{Lexer.java} utiliza expressões regulares equivalentes a esses AFDs, além de uma ordem de verificação que prioriza operadores de dois caracteres.
+
+\section{Analisador Sintático}
+\label{sec:sintatico}
+
+O analisador sintático, implementado em \texttt{parser/Parser.java}, é um parser descendente recursivo (LL(1)) que consome os tokens gerados pelo lexer e verifica se a sequência pertence à gramática definida na Seção~\ref{sec:lexico}.
+
+A precedência de operadores é implementada por meio de métodos encadeados, em que cada nível corresponde a um conjunto de operadores:
+
+\begin{verbatim}
+expressao -> exprOr -> exprAnd -> exprRel -> exprAdd -> exprMul -> exprPow -> exprUn -> primario
+\end{verbatim}
+
+Cada não terminal da gramática é implementado como um método no parser, como por exemplo \texttt{parseExpressao}, \texttt{parseComandoSe}, \texttt{parseComandoEnquanto}, \texttt{parseComandoPara}, \texttt{parseBloco}, entre outros.
+
+Erros sintáticos são detectados quando um token esperado não é encontrado (falha de correspondência em \texttt{match}) ou quando a ordem dos tokens viola a gramática (por exemplo, ausência de ponto e vírgula, chaves ou parênteses obrigatórios). Nesses casos, o compilador emite mensagens de erro claras e interrompe a compilação.
+
+\section{Analisador Semântico}
+\label{sec:semantico}
+
+A análise semântica é responsável por garantir que o programa CF, além de sintaticamente correto, faça sentido em termos de tipos e uso de variáveis. Essa etapa é implementada em conjunto com o parser e utiliza duas estruturas principais:
+
+\begin{itemize}
+  \item \texttt{TipoDado} (em \texttt{Tipo\_de\_dados/TipoDado.java}): enumeração que representa os tipos internos (INTEIRO, LOGICO, CARACTERE, STRING etc.).
+  \item \texttt{TabelaDeSimbolos} (em \texttt{TabelaDeSimbolos/TabelaDeSimbolos.java}): estrutura de dados que gerencia os símbolos (variáveis) e seus tipos, com suporte a escopos aninhados por meio de uma pilha de mapas.
+\end{itemize}
+
+As principais regras semânticas verificadas incluem:
+
+\begin{itemize}
+  \item variáveis devem ser declaradas antes do uso;
+  \item não é permitido uso de variáveis não declaradas;
+  \item operações aritméticas exigem operandos do tipo INTEIRO;
+  \item operações lógicas exigem operandos do tipo LOGICO;
+  \item operações relacionais operam sobre inteiros e retornam LOGICO;
+  \item atribuições verificam compatibilidade entre o tipo da expressão e o tipo da variável;
+  \item condições de estruturas de controle (\texttt{Se}, \texttt{Enquanto}, \texttt{Para}) devem ser do tipo LOGICO;
+  \item concatenação com \texttt{+} aceita STRING, INTEIRO e LOGICO, com conversão implícita para STRING quando necessário.
+\end{itemize}
+
+Erros semânticos (como uso de variável não declarada, incompatibilidade de tipos em operações ou atribuições inválidas) são reportados ao usuário e impedem a geração de código.
+
+\section{Geração de Código e Execução}
+\label{sec:codegen}
+
+A etapa de geração de código traduz o programa CF em código Assembly MIPS 32 bits, implementada na classe \texttt{codegen/CodeGenMIPS.java}. O fluxo é:
+
+\begin{itemize}
+  \item recebimento da estrutura sintática anotada com tipos e informações da tabela de símbolos;
+  \item geração da seção \texttt{.data}, contendo variáveis globais, strings literais e buffers auxiliares;
+  \item geração da seção \texttt{.text}, contendo o código executável com rótulo de entrada \texttt{main};
+  \item tradução de cada comando CF em uma sequência de instruções MIPS correspondentes.
+\end{itemize}
+
+Operações aritméticas (\texttt{+}, \texttt{-}, \texttt{*}, \texttt{/}, \texttt{\%}) são mapeadas para instruções MIPS apropriadas, enquanto a potenciação (\texttt{**}) é implementada com um laço de multiplicações sucessivas. Operadores relacionais e lógicos são traduzidos em comparações e saltos condicionais, gerando valores 0 ou 1 em registradores temporários.
+
+Estruturas de controle (\texttt{Se}/\texttt{Senao}, \texttt{Enquanto}, \texttt{Para}) são convertidas em rótulos e instruções de desvio (\texttt{beq}, \texttt{bne}, \texttt{j}, etc.), formando o fluxo de controle correspondente no Assembly.
+
+A saída final é escrita no arquivo \texttt{outputfiles/saida.asm}, que pode ser executado em simuladores como MARS ou SPIM.
+
+\section{Otimizações}
+\label{sec:otimizacoes}
+
+O compilador CF implementa algumas otimizações simples:
+
+\begin{itemize}
+  \item \textbf{Constant Folding}: expressões compostas apenas por literais numéricos (por exemplo, \texttt{10 + 5 * 2 - 8 / 2}) são avaliadas em tempo de compilação, reduzindo o número de instruções geradas.
+  \item \textbf{Concatenação inteligente}: tratamento especial da operação \texttt{+} em contexto de strings, evitando conversões desnecessárias e unificando o tratamento de STRING, INTEIRO e LOGICO.
+  \item \textbf{Geração de rótulos únicos}: uso sistemático de rótulos distintos para regiões de código (if/else, laços), evitando colisões e simplificando o fluxo de execução.
+\end{itemize}
+
+Como trabalhos futuros, podem ser implementadas otimizações adicionais, tais como:
+
+\begin{itemize}
+  \item propagação de constantes;
+  \item eliminação de código morto;
+  \item otimização de controle de fluxo (redução de saltos redundantes);
+  \item melhor gerenciamento de registradores e otimizações do tipo peephole.
+\end{itemize}
+
+\section{Relação com os Critérios de Avaliação}
+\label{sec:avaliacao}
+
+Por fim, relacionamos cada parte deste documento com os itens exigidos no enunciado do trabalho:
+
+\begin{itemize}
+  \item \textbf{Documentação e Léxico (5 pontos)}: Seção~\ref{sec:lexico} -- definição informal da linguagem, gramática em alto nível, construção dos autômatos e descrição do analisador léxico.
+  \item \textbf{Sintático (5 pontos)}: Seção~\ref{sec:sintatico} -- descrição do analisador sintático, técnica LL(1) e tratamento de erros.
+  \item \textbf{Semântico (5 pontos)}: Seção~\ref{sec:semantico} -- tabela de símbolos, regras de tipagem, verificação de variáveis e condições.
+  \item \textbf{Geração de Código e Execução (5 pontos)}: Seção~\ref{sec:codegen} -- explicação do gerador de código Assembly MIPS e execução em simuladores.
+  \item \textbf{Otimizações (até 3 pontos extras)}: Seção~\ref{sec:otimizacoes} -- otimizações implementadas e sugestões de aprimoramento.
+\end{itemize}
+
+\end{document}

@@ -25,6 +25,42 @@ Este projeto implementa um compilador completo para a linguagem CF, incluindo as
 3. **Análise Semântica** - Validação de tipos e uso de variáveis através de uma Tabela de Símbolos
 4. **Geração de Código** - Geração de código Assembly MIPS executável
 
+### 📚 Documentação Adicional
+
+#### Autômatos e Análise Léxica
+
+- **[AUTOMATO_COMPLETO_VISUAL.md](AUTOMATO_COMPLETO_VISUAL.md)** - ⭐ **DESENHO VISUAL COMPLETO DO AUTÔMATO**
+  - Diagramas ASCII art detalhados de todos os AFDs
+  - Fluxo completo de processamento ilustrado
+  - Exemplo de execução passo a passo com visualização
+  - Representação matemática formal
+  - **RECOMENDADO PARA VISUALIZAÇÃO GERAL**
+
+- **[AUTOMATOS.md](AUTOMATOS.md)** - Documentação técnica completa dos autômatos finitos determinísticos (AFD)
+  - 20 seções detalhadas com teoria e implementação
+  - Diagramas de estados, tabelas de transição, gramáticas regulares
+  - Análise de complexidade e casos de teste
+  
+- **[DIAGRAMAS_AUTOMATOS.md](DIAGRAMAS_AUTOMATOS.md)** - Diagramas visuais em formato Mermaid
+  - 18 diagramas renderizáveis (GitHub, VSCode, Mermaid Live)
+  - Máquinas de estado, fluxogramas, diagramas de sequência
+  - Visualização interativa do funcionamento do lexer
+  
+- **[EXEMPLO_PRATICO_AUTOMATOS.md](EXEMPLO_PRATICO_AUTOMATOS.md)** - Exemplo passo a passo
+  - Execução detalhada de código real
+  - Processamento caractere por caractere
+  - Demonstração prática de cada AFD
+  
+- **[RESUMO_AUTOMATOS.md](RESUMO_AUTOMATOS.md)** - Resumo executivo
+  - Visão geral de todos os autômatos
+  - Resultados dos testes (100% de sucesso)
+  - Guia rápido de uso
+
+- **[TestAutomatos.java](src/test/TestAutomatos.java)** - Suite de testes
+  - 55 casos de teste automatizados
+  - Validação de todos os AFDs implementados
+  - Taxa de sucesso: 100%
+
 ## ⚡ Quick Start
 
 ```powershell
